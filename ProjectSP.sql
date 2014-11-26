@@ -72,19 +72,19 @@ BEGIN
 			Insert Into Customer(UserName, FirstName, LastName,StreetNumber, StreetName, StreetType, City, Province, Country, PostalCode, Password)
 				values (@UserName, @FirstName, @LastName,@StreetNumber, @StreetName, @StreetType, @City, @Province, @Country, @PostalCode, @Password)
 			SELECT @CustomerID = SCOPE_IDENTITY()
-			IF @HomeEmail <> null
+			IF @HomeEmail is not null
 			BEGIN	
 				Insert Into CustomerEmail(CustomerID, Email, EmailType)
 				values (@CustomerID, @HomeEmail, 'Home')
 			END
 
-			IF @WorkEmail <> null
+			IF @WorkEmail is not null
 			BEGIN	
 				Insert Into CustomerEmail(CustomerID, Email, EmailType)
 				values (@CustomerID, @WorkEmail, 'Work')
 			END
 
-			IF @OtherEmail <> null
+			IF @OtherEmail is not null
 			BEGIN	
 				Insert Into CustomerEmail(CustomerID, Email, EmailType)
 				values (@CustomerID, @OtherEmail, 'Other')
@@ -132,7 +132,15 @@ BEGIN
 	declare @Return int = 0
 	BEGIN TRY
 			BEGIN TRAN
-				
+				update Customer
+				set UserName = @UserName, FirstName = @FirstName, LastName = @LastName, StreetNumber = @StreetNumber, StreetName = @StreetName, StreetType = @StreetType, City = @City,
+				Province = @Province, Country = @Country, PostalCode = @PostalCode where CustomerID = @CustomerID;
+
+				update CustomerEmail set Email = @HomeEmail where CustomerID = @CustomerID and EmailType = 'Home';
+				update CustomerEmail set Email = @WorkEmail where CustomerID = @CustomerID and EmailType = 'Work';
+				update CustomerEmail set Email = @OtherEmail where CustomerID = @CustomerID and EmailType = 'Other';
+
+			set @Return = 0
 			COMMIT TRAN
 		END TRY
 		BEGIN CATCH
@@ -161,7 +169,14 @@ BEGIN
 	declare @Return int = 0
 	BEGIN TRY
 			BEGIN TRAN
-				
+				declare @count int = 0
+				select @count = count(InvoiceID) from Invoice where CustomerID = @CustomerID
+				IF @count = 0
+				BEGIN
+					delete from Customer where CustomerID = @CustomerID;
+					delete from CustomerEmail where CustomerID = @CustomerID;
+				END
+				SET  @Return = 0
 			COMMIT TRAN
 		END TRY
 		BEGIN CATCH
@@ -193,7 +208,17 @@ BEGIN
 	declare @Return int = 0
 	BEGIN TRY
 			BEGIN TRAN
-				
+				declare @passoword nvarchar(20)
+				select @passoword = Password from Customer where CustomerID = @CustomerID 
+				IF @NewPassword1 <> @NewPassword2 or @passoword <> @CurrentPassword
+				BEGIN
+					Set @Return = -1
+				END 
+				ELSE
+				BEGIN
+					update Customer set Password = @NewPassword1 where CustomerID = @CustomerID
+				END
+				Set @Return = 0
 			COMMIT TRAN
 		END TRY
 		BEGIN CATCH
@@ -274,11 +299,11 @@ Dataset Returned		Yes		Returns basic customer information in a format to put in 
 					Country
 					PostalCode
 */	
-	@SearchFirstName nvarchar(25),	--Search criteria, parameter default should be NULL or empty string
-	@SearchLastName nvarchar(50),	--Search criteria, parameter default should be NULL or empty string
-	@SearchCity nvarchar(50),		--Search criteria, parameter default should be NULL or empty string
-	@SearchProvince nvarchar(50),	--Search criteria, parameter default should be NULL or empty string
-	@SearchCountry nvarchar(50)	--Search criteria, parameter default should be NULL or empty string
+	@SearchFirstName nvarchar(25) = null,	--Search criteria, parameter default should be NULL or empty string
+	@SearchLastName nvarchar(50) = null,	--Search criteria, parameter default should be NULL or empty string
+	@SearchCity nvarchar(50) = null,		--Search criteria, parameter default should be NULL or empty string
+	@SearchProvince nvarchar(50) = null,	--Search criteria, parameter default should be NULL or empty string
+	@SearchCountry nvarchar(50) = null	--Search criteria, parameter default should be NULL or empty string
 
 /* HINT:for the WHERE condition you will want something like the following that checks the optional to see if they are filled in:
 WHERE (@SearchFirstName is null or FirstName like ‘%’ + @SearchFirstName + ‘%’), --
@@ -297,7 +322,10 @@ BEGIN
 	declare @Return int = 0
 	BEGIN TRY
 			BEGIN TRAN
-				select * from Customer
+				select CustomerID, UserName, CONCAT(FirstName, ' ', LastName) AS CustomerName, CONCAT(StreetNumber, ' ' + StreetName, ' ', StreetType, ', ', City, ', ', Province, ', ', Country, ' ', PostalCode) AS Address from Customer
+				where (@SearchFirstName is null or FirstName like '%' + @SearchFirstName + '%') and (@SearchLastName is null or LastName like '%' + @SearchLastName + '%')
+				and (@SearchCity is null or City like '%' + @SearchCity + '%') and (@SearchProvince is null or Province like '%' + @SearchProvince + '%')
+				and (@SearchCountry is null or Country like '%' + @SearchCountry + '%')
 				set @Return = 0
 			COMMIT TRAN
 		END TRY
