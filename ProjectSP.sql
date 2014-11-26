@@ -1684,18 +1684,7 @@ BEGIN
 				IF @SearchInvoiceID IS NOT NULL AND @SearchPaymentDate IS NOT NULL
 					SELECT PaymentID, InvoiceID, PaymentAmount, PaymentDate, PaymentReference
 					FROM Payment
-					WHERE InvoiceID = @SearchInvoiceID AND PaymentDate = @SearchPaymentDate
-				ELSE IF @SearchInvoiceID IS NOT NULL
-					SELECT PaymentID, InvoiceID, PaymentAmount, PaymentDate, PaymentReference
-					FROM Payment
-					WHERE InvoiceID = @SearchInvoiceID
-				ELSE IF @SearchPaymentDate IS NOT NULL
-					SELECT PaymentID, InvoiceID, PaymentAmount, PaymentDate, PaymentReference
-					FROM Payment
-					WHERE PaymentDate = @SearchPaymentDate
-				ELSE
-					SELECT PaymentID, InvoiceID, PaymentAmount, PaymentDate, PaymentReference
-					FROM Payment
+					WHERE (@SearInvoiceID IS NULL OR InvoiceID = @SearchInvoiceID )AND WHERE ( @SearchPaymentDate IS NULL OR PaymentDate = @SearchPaymentDate )
 				SET @Return = 0;
 			COMMIT TRAN
 		END TRY
