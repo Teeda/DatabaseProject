@@ -1681,10 +1681,9 @@ BEGIN
 	declare @Return int = 0
 	BEGIN TRY
 			BEGIN TRAN
-				IF @SearchInvoiceID IS NOT NULL AND @SearchPaymentDate IS NOT NULL
-					SELECT PaymentID, InvoiceID, PaymentAmount, PaymentDate, PaymentReference
-					FROM Payment
-					WHERE (@SearInvoiceID IS NULL OR InvoiceID = @SearchInvoiceID )AND WHERE ( @SearchPaymentDate IS NULL OR PaymentDate = @SearchPaymentDate )
+				SELECT PaymentID, InvoiceID, PaymentAmount, PaymentDate, PaymentReference
+				FROM Payment
+				WHERE (@SearchInvoiceID IS NULL OR InvoiceID = @SearchInvoiceID ) AND (@SearchPaymentDate IS NULL OR PaymentDate = @SearchPaymentDate )
 				SET @Return = 0;
 			COMMIT TRAN
 		END TRY
