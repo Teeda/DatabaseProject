@@ -218,7 +218,6 @@ BEGIN
 				BEGIN
 					update Customer set Password = @NewPassword1 where CustomerID = @CustomerID
 				END
-				Set @Return = 0
 			COMMIT TRAN
 		END TRY
 		BEGIN CATCH
