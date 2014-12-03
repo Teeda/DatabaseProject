@@ -1679,17 +1679,17 @@ BEGIN
 
 	declare @Return int = 0
 	BEGIN TRY
-			BEGIN TRAN
-				SELECT PaymentID, InvoiceID, PaymentAmount, PaymentDate, PaymentReference
-				FROM Payment
-				WHERE (@SearchInvoiceID IS NULL OR InvoiceID = @SearchInvoiceID ) AND (@SearchPaymentDate IS NULL OR PaymentDate = @SearchPaymentDate )
-				SET @Return = 0;
-			COMMIT TRAN
-		END TRY
-		BEGIN CATCH
-			ROLLBACK
-			Set @Return = -1
-		END CATCH
+		BEGIN TRAN
+			SELECT PaymentID, InvoiceID, PaymentAmount, PaymentDate, PaymentReference
+			FROM Payment
+			WHERE (@SearchInvoiceID IS NULL OR InvoiceID = @SearchInvoiceID ) AND (@SearchPaymentDate IS NULL OR PaymentDate = @SearchPaymentDate )
+			SET @Return = 0;
+		COMMIT TRAN
+	END TRY
+	BEGIN CATCH
+		ROLLBACK
+		Set @Return = -1
+	END CATCH
 
 	RETURN @Return
 END
