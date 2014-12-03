@@ -1179,36 +1179,33 @@ Parameters */
 AS
 BEGIN
 	SET NOCOUNT ON;
-
 	declare @Return int = 0
-	IF @Return = 0
-		BEGIN
-		BEGIN TRY
-			BEGIN TRAN
-				SELECT InvoiceAmount as (Product.Price * InvoiceDetail.Quantity 
-				
-                SELECT Invoice.InvoiceID, InvoiceDate, PaymentAmount as InvoiceAmount from Invoice
-				Inner join Payment
-					on Payment.InvoiceID = Invoice.InvoiceID
-				SELECT PaymentAmount from Payment
-                Set InvoiceAmount (
-                Inner join Customer
-                    on Customer.CustomerID = Invoice.CustomerID
-                    SELECT CustomerID, CONCAT(FirstName, ' ', LastName) AS Customer                
-                    WHERE (@SearchInvoiceID is NULL or InvoiceID like '%') and 
-					(@SearchCustomerID is NULL or CustomerID like '%')
-                SET @Return = 0
-			COMMIT TRAN
-		END TRY
-		BEGIN CATCH
-			ROLLBACK
+	BEGIN TRY
+		BEGIN TRAN
+			SELECT	Invoice.InvoiceID,Invoice.InvoiceDate,
+					CONCAT(FirstName, ' ', LastName) AS Customer,
+					SUM(Product.Price * InvoiceDetail.Quantity) As InvoiceAmount,
+					PaymentAmount,
+					(SUM(Product.Price * InvoiceDetail.Quantity)-PaymentAmount) AS AmountOwing
+			FROM Invoice
+				INNER JOIN Customer ON Customer.CustomerID = Invoice.CustomerID
+				INNER JOIN InvoiceDetail on Invoice.InvoiceID = InvoiceDetail.InvoiceDetailID
+				INNER JOIN Product on InvoiceDetail.ProductID = Product.ProductID
+				INNER JOIN Payment on Invoice.InvoiceID = Payment.InvoiceID
+			WHERE Customer.CustomerID = 5 
+			GROUP BY Invoice.InvoiceID
+			HAVING (SUM(Product.Price * InvoiceDetail.Quantity)-PaymentAmount) > 0
+            SET @Return = 0
+		COMMIT TRAN
+	END TRY
+	BEGIN CATCH
+		ROLLBACK
 			Set @Return = -1
 		END CATCH
-	END
-
 	RETURN @Return
 END
 GO
+
 CREATE PROCEDURE	ReturnInvoice
 /* Procedure Description	Creates a new invoice based on an existing committed invoice.  
 The invoice date should be the current date, and all other information from the Invoice and 
