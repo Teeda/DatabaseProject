@@ -983,7 +983,7 @@ Parameters */
 AS
 BEGIN
 	SET NOCOUNT ON;
-
+	SET TRANSACTION ISOLATION LEVEL READ COMMITTED
 	declare @Return int = 0
 	IF @Return = 0
 		BEGIN
@@ -1102,9 +1102,14 @@ BEGIN
 		BEGIN
 		BEGIN TRY
 			BEGIN TRAN
-                SELECT Invoice.InvoiceID, InvoiceDate, PaymentAmount, PaymentAmount as InvoiceAmount, PaymentAmount as PaymentAmount from Invoice
+                SELECT Invoice.InvoiceID, InvoiceDate, PaymentAmount, (Product.Price * InvoiceDetail.Quantity) as InvoiceAmount, 
+				  ((Product.Price * InvoiceDetail.Quantity) - PaymentAmount) as AmountOwing from Invoice
+				Inner join InvoiceDetail 
+					on InvoiceDetail.InvoiceID = Invoice.InvoiceID
 				Inner join Payment
 					on Payment.InvoiceID = Invoice.InvoiceID
+				Inner join Product
+					on Product.ProductID = InvoiceDetail.ProductID
                 Inner join Customer
                     on Customer.CustomerID = Invoice.CustomerID
                     SELECT CONCAT(FirstName, ' ', LastName) AS Customer
@@ -1224,24 +1229,23 @@ Parameters */
 AS
 BEGIN
 	SET NOCOUNT ON;
-
+	SET TRANSACTION ISOLATION LEVEL READ COMMITTED
 	declare @Return int = 0
 	IF @Return = 0
 		BEGIN
 		BEGIN TRY
 			BEGIN
-				declare @count int = 0
-				select @count = count(InvoiceID) from Invoice where InvoiceID = @ReturnInvoiceID
-                IF @count = 0
-                    BEGIN
-						SELECT CustomerID, ProductID, InvoiceDetailID from Invoice
-						inner join InvoiceDetail
-						on InvoiceDetail.InvoiceID = Invoice.InvoiceID
-						SELECT InvoiceID = @ReturnInvoiceID
-						SET InvoiceDetail.Quantity = InvoiceDetail.Quantity - 1, InvoiceDate												
-						SELECT @NewInvoiceID = = SCOPE_IDENTITY()
-						SET @Return = 0
-					END
+			BEGIN TRAN
+				declare @InvoiceID int = 0
+				select @InvoiceID = InvoiceID from Invoice where InvoiceID = @ReturnInvoiceID
+				IF @InvoiceID <> 0
+				BEGIN
+					insert into Invoice (CustomerID, InvoiceDate) (select CustomerID, CURRENT_TIMESTAMP from Invoice where InvoiceID = @ReturnInvoiceID)
+					SELECT @NewInvoiceID = SCOPE_IDENTITY()
+					insert into InvoiceDetail (InvoiceID, ProductID, Quantity) select @NewInvoiceID, ProductID, Quantity * -1 
+					from InvoiceDetail where InvoiceID = @ReturnInvoiceID
+				END
+				ELSE set @Return = -1
 			END 
 		END TRY
 		BEGIN CATCH
