@@ -562,7 +562,10 @@ BEGIN
 	declare @Return int = 0
 	BEGIN TRY
 			BEGIN TRAN
-				
+				INSERT INTO Product(ProductName, ProductDescription, SKU, Price)
+				VALUES (@ProductName, @ProductDescription, @SKU, @Price)
+				SELECT @ProductID = SCOPE_IDENTITY()
+				SET @Return = 0	
 			COMMIT TRAN
 		END TRY
 		BEGIN CATCH
@@ -595,7 +598,11 @@ BEGIN
 	declare @Return int = 0
 	BEGIN TRY
 			BEGIN TRAN
-				
+				UPDATE Product
+				SET ProductName = @ProductName, ProductDescription = @ProductDescription, 
+					SKU = @SKU, Price = @Price
+				WHERE ProductID = @ProductID	
+				SET @Return = 0
 			COMMIT TRAN
 		END TRY
 		BEGIN CATCH
@@ -624,7 +631,8 @@ BEGIN
 	declare @Return int = 0
 	BEGIN TRY
 			BEGIN TRAN
-				
+				DELETE FROM Product
+				WHERE ProductID = @ProductID	
 			COMMIT TRAN
 		END TRY
 		BEGIN CATCH
@@ -657,7 +665,9 @@ BEGIN
 	declare @Return int = 0
 	BEGIN TRY
 			BEGIN TRAN
-				
+				SELECT @ProductName = ProductName, @ProductDescription = ProductDescription, @SKU = SKU, @Price = Price
+				FROM Product
+				WHERE ProductID = @ProductID	
 			COMMIT TRAN
 		END TRY
 		BEGIN CATCH
@@ -682,8 +692,8 @@ Dataset Returned		Yes		Returns basic product information in a format to put in a
 	ProductDescription
 	Price
  */	
-	@SearchProductName nvarchar(25),		--Search criteria, parameter default should be NULL or empty string
-	@SearchProductDescription nvarchar(250)	--Search criteria, parameter default should be NULL or empty string
+	@SearchProductName nvarchar(25) = NULL,		--Search criteria, parameter default should be NULL or empty string
+	@SearchProductDescription nvarchar(250) = NULL	--Search criteria, parameter default should be NULL or empty string
 --HINT: see hint for GetCustomerList.
 
 AS
@@ -693,7 +703,10 @@ BEGIN
 	declare @Return int = 0
 	BEGIN TRY
 			BEGIN TRAN
-				
+				SELECT ProductID, ProductName, SKU, ProductDescription, Price
+				FROM Product
+				WHERE (@SearchProductName IS NULL OR ProductName LIKE '%' + @SearchProductName + '%')
+					AND (@SearchProductDescription IS NULL OR ProductDescription LIKE '%' + @SearchProductDescription + '%')	
 			COMMIT TRAN
 		END TRY
 		BEGIN CATCH
@@ -724,7 +737,10 @@ BEGIN
 	declare @Return int = 0
 	BEGIN TRY
 			BEGIN TRAN
-				
+				UPDATE Product
+				SET QuantityOnHand = @QuantityOnHand, Price = @Price
+				WHERE ProductID = @ProductID	
+				SET @Return = 0				
 			COMMIT TRAN
 		END TRY
 		BEGIN CATCH
@@ -756,7 +772,9 @@ BEGIN
 	declare @Return int = 0
 	BEGIN TRY
 			BEGIN TRAN
-				
+				SELECT ProductID, ProductName, QuantityOnHand
+				FROM Product
+				WHERE QuantityOnHand < 0	
 			COMMIT TRAN
 		END TRY
 		BEGIN CATCH
