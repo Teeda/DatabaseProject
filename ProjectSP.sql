@@ -772,231 +772,267 @@ GO
 --- 
 ---Invoice Requirements
 ---
-CREATE PROCEDURE AddInvoice
-/*
-Procedure Description:	Add the basic header information for an invoice
-Return Value			0 for success
-						-1 for any error
-Dataset Returned		No
- */
- 	@InvoiceDate datetime,	
-	@CustomerID int,		--The customer for the invoice
-	@InvoiceID int OUTPUT --The InvoiceID for the created invoice
+CREATE PROCEDURE	AddInvoice
+/* Procedure Description	Add the basic header information for an invoice
+Return Value	0 for success
+-1 for any error
+Dataset Returned	No	
+Parameters */	
+	@InvoiceDate datetime,	
+	@CustomerID int, --	The customer for the invoice
+	@InvoiceID int OUTPUT --	The InvoiceID for the created invoice
 
 AS
 BEGIN
-	SET NOCOUNT ON;
+	    SET NOCOUNT ON;
 
-	declare @Return int = 0
-	BEGIN TRY
+	    declare @Return int = 0
+	    BEGIN TRY
 			BEGIN TRAN
-				
+				INSERT into Invoice (InvoiceDate, CustomerID)
+					values (@InvoiceDate, @CustomerID)
+				SELECT @InvoiceID = SCOPE_IDENTITY()
+                SET @Return = 0
 			COMMIT TRAN
 		END TRY
 		BEGIN CATCH
 			ROLLBACK
 			Set @Return = -1
 		END CATCH
+	
 
 	RETURN @Return
 END
 GO
 
-
-CREATE PROCEDURE AddInvoiceDetail
-/*
-Procedure Description:	Add a line item to the invoice.  Each invoice can have any number of InvoiceDetails.  Each invoice can only list a particular product once, multiple invoice details for a product are not allowed.
-Return Value			0 for success
-						-1 for any error
-Dataset Returned		No
-*/
- 	@InvoiceID int,					--The invoice to associate the invoice detail line item with
-	@ProductID int,					--The product being purchased
-	@Quantity int,					--The number of products being purchased
-	@InvoiceDetailID int OUTPUT		--The ID for the line item just created
+CREATE PROCEDURE	AddInvoiceDetail
+/* Procedure Description	Add a line item to the invoice.  Each invoice can have any number of InvoiceDetails.  
+Each invoice can only list a particular product once, multiple invoice details for a product are not allowed.
+Return Value	0 for success
+-1 for any error
+Dataset Returned	No	
+Parameters */	
+	@InvoiceID int, --	The invoice to associate the invoice detail line item with
+	@ProductID int, --	The product being purchased
+	@Quantity int, --	The number of products being purchased
+	@InvoiceDetailID int OUTPUT --	 The ID for the line item just created
 
 AS
 BEGIN
 	SET NOCOUNT ON;
 
 	declare @Return int = 0
-	BEGIN TRY
+		BEGIN TRY
 			BEGIN TRAN
-				
+				INSERT into InvoiceDetail (InvoiceID, ProductID, Quantity)
+					values (@InvoiceID, @ProductID, @Quantity)
+					SELECT InvoiceDetailID from InvoiceDetail
+						inner join Invoice
+						on Invoice.InvoiceID = InvoiceDetail.InvoiceID					
+					SELECT @InvoiceDetailID = SCOPE_IDENTITY()
+                    SET @Return = 0
 			COMMIT TRAN
 		END TRY
 		BEGIN CATCH
 			ROLLBACK
 			Set @Return = -1
 		END CATCH
+	
 
 	RETURN @Return
 END
 GO
-
 
 CREATE PROCEDURE CommitInvoice
-/*
-Procedure Description:	Locks the invoice so that it can no longer be edited, and subtracts the updates the QuantityOnHand for each Product included on the invoice details for the particular invoice.
-Return Value			0 for success
-						-1 for any error
-Dataset Returned		No
- */	
-	@InvoiceID int		--The invoice to commit
+/* Procedure Description	Locks the invoice so that it can no longer be edited, 
+and subtracts the updates the QuantityOnHand for each Product included on the invoice 
+details for the particular invoice.
+Return Value	0 for success
+-1 for any error
+Dataset Returned	No	
+Parameters */	
 
+    @InvoiceID int --	The invoice to commit
 
 AS
 BEGIN
 	SET NOCOUNT ON;
-
+    SET TRANSACTION ISOLATION LEVEL SERIALIZABLE
 	declare @Return int = 0
-	BEGIN TRY
+		BEGIN TRY
 			BEGIN TRAN
-				
+                UPDATE Product 
+					Set Product.QuantityOnHand = Product.QuantityOnHand - InvoiceDetail.Quantity
+					From Product
+					inner join InvoiceDetail
+					on Product.ProductID = InvoiceDetail.ProductID
+					inner join Invoice
+					on InvoiceDetail.InvoiceID = Invoice.InvoiceID
+					Where (Product.ProductID = InvoiceDetail.ProductID) and ( Invoice.InvoiceID = @InvoiceID)
+				SET @Return = 0				 
 			COMMIT TRAN
 		END TRY
 		BEGIN CATCH
 			ROLLBACK
 			Set @Return = -1
 		END CATCH
+	
 
 	RETURN @Return
 END
 GO
 
-
-CREATE PROCEDURE UpdateInvoice
-/*
-Procedure Description:	Update the basic header information for an existing invoice
-Return Value			0 for success
-						-1 for any error
-Dataset Returned		No
- */
- 	@InvoiceID int,			--	The invoice to update
-	@InvoiceDate datetime,
-	@CustomerID int		--The customer for the invoice
+CREATE PROCEDURE	UpdateInvoice
+/* Procedure Description	Update the basic header information for an existing invoice
+Return Value	0 for success
+-1 for any error
+Dataset Returned	No	
+Parameters */	
+    @InvoiceID int, --	The invoice to update
+	@InvoiceDate datetime,	
+	@CustomerID int --	The customer for the invoice
 
 AS
 BEGIN
 	SET NOCOUNT ON;
 
 	declare @Return int = 0
-	BEGIN TRY
+	IF @Return = 0
+		BEGIN
+		BEGIN TRY
 			BEGIN TRAN
-				
+                UPDATE Invoice 
+                SET InvoiceDate = @InvoiceDate, CustomerID = @CustomerID
+                WHERE InvoiceID = @InvoiceID
+				SET @Return = 0
 			COMMIT TRAN
 		END TRY
 		BEGIN CATCH
 			ROLLBACK
 			Set @Return = -1
 		END CATCH
+	END
 
 	RETURN @Return
 END
 GO
-
-
-CREATE PROCEDURE UpdateInvoiceDetail
-/*
-Procedure Description:	Update an existing line item to the invoice.  Each invoice can have any number of InvoiceDetails.  Each invoice can only list a particular product once, multiple invoice details for a product are not allowed.
-Return Value			0 for success
-						-1 for any error
-Dataset Returned		No
-*/	
-	@InvoiceDetailID int,	--The invoice detail line item to update
-	@ProductID int,			--The product being purchased
-	@Quantity int			--The number of products being purchased
+CREATE PROCEDURE	UpdateInvoiceDetail
+/* Procedure Description	Update an existing line item to the invoice.  Each invoice can have any number of InvoiceDetails.  Each invoice can only list a particular product once, multiple invoice details for a product are not allowed.
+Return Value	0 for success
+-1 for any error
+Dataset Returned	No	
+Parameters */	
+    @InvoiceDetailID int, --	The invoice detail line item to update
+	@ProductID int, --	The product being purchased
+	@Quantity int --	The number of products being purchased
 
 AS
 BEGIN
 	SET NOCOUNT ON;
 
 	declare @Return int = 0
-	BEGIN TRY
+	IF @Return = 0
+		BEGIN
+		BEGIN TRY
 			BEGIN TRAN
-				
+                UPDATE InvoiceDetail
+                SET  ProductID = @ProductID, Quantity = @Quantity
+                FROM InvoiceDetail
+                    inner join Invoice
+                        on Invoice.InvoiceID = InvoiceDetail.InvoiceID
+				Where InvoiceDetailID = @InvoiceDetailID
+				SET @Return = 0
 			COMMIT TRAN
 		END TRY
 		BEGIN CATCH
 			ROLLBACK
 			Set @Return = -1
 		END CATCH
+	END
 
 	RETURN @Return
 END
 GO
 
-
-CREATE PROCEDURE DeleteInvoice
-/*
-Procedure Description:	Allows an existing invoice to be deleted only if it has not been committed
-Return Value			0 for success
-						-1 for any error
-Dataset Returned		No
- */	
-	@InvoiceID int  --The invoice to delete
+CREATE PROCEDURE	DeleteInvoice
+/* Procedure Description	Allows an existing invoice to be deleted only if it has not been committed
+Return Value	0 for success
+-1 for any error
+Dataset Returned	No	
+Parameters */	
+    @InvoiceID int --	The invoice to delete
 
 AS
 BEGIN
 	SET NOCOUNT ON;
 
 	declare @Return int = 0
-	BEGIN TRY
+	IF @Return = 0
+		BEGIN
+		BEGIN TRY
 			BEGIN TRAN
-				
+                declare @count int = 0
+                select @count = count(InvoiceID) from Invoice 
+                where InvoiceID = @InvoiceID
+                IF @count = 0
+                    BEGIN
+                        delete from Invoice where InvoiceID = @InvoiceID;
+                    END
+                SET @Return = 0
 			COMMIT TRAN
 		END TRY
 		BEGIN CATCH
 			ROLLBACK
 			Set @Return = -1
 		END CATCH
+	END
 
 	RETURN @Return
 END
 GO
 
-
-CREATE PROCEDURE GetInvoiceByID
-/*
-Procedure Description:	Get the basic header information for an existing invoice
-Return Value			0 for success
-						-1 for any error
-Dataset Returned		No
- */	
-	@InvoiceID int,					--The invoice to get
+CREATE PROCEDURE	GetInvoiceByID
+/* Procedure Description	Get the basic header information for an existing invoice
+Return Value	0 for success
+-1 for any error
+Dataset Returned	No	
+Parameters */	
+    @InvoiceID int, --	The invoice to get
 	@InvoiceDate datetime OUTPUT,	--The value for the record
-	@CustomerID int  OUTPUT		--The value for the record
+	@CustomerID int OUTPUT --	The value for the record
 
 AS
 BEGIN
 	SET NOCOUNT ON;
 
 	declare @Return int = 0
-	BEGIN TRY
+	IF @Return = 0
+		BEGIN
+		BEGIN TRY
 			BEGIN TRAN
-				
+                SELECT @CustomerID = CustomerID, @InvoiceDate = InvoiceDate
+                FROM Invoice WHERE InvoiceID = @InvoiceID
+                SET @Return = 0
 			COMMIT TRAN
 		END TRY
 		BEGIN CATCH
 			ROLLBACK
 			Set @Return = -1
 		END CATCH
+	END
 
 	RETURN @Return
 END
 GO
-
-
-CREATE PROCEDURE GetInvoiceDetailByID
-/*
-Procedure Description:	Get the information about a particular Invoice Detail
-Return Value			0 for success
-						-1 for any error
-Dataset Returned		No
- */	
-	@InvoiceDetailID int,	--The invoice detail line item to get
-	@ProductID int  OUTPUT,	--The value for the record
-	@Quantity int  OUTPUT	--The value for the record
+CREATE PROCEDURE	GetInvoiceDetailByID
+/* Procedure Description	Get the information about a particular Invoice Detail
+Return Value	0 for success
+-1 for any error
+Dataset Returned	No	
+Parameters */	
+    @InvoiceDetailID int, --	The invoice detail line item to get
+	@ProductID int OUTPUT, --	The value for the record
+	@Quantity int OUTPUT --	The value for the record
 
 
 AS
@@ -1004,160 +1040,202 @@ BEGIN
 	SET NOCOUNT ON;
 
 	declare @Return int = 0
-	BEGIN TRY
+	IF @Return = 0
+		BEGIN
+		BEGIN TRY
 			BEGIN TRAN
-				
+                SELECT @ProductID = ProductID, @Quantity = Quantity
+                FROM InvoiceDetail WHERE InvoiceDetailID = @InvoiceDetailID
+                SET @Return = 0
 			COMMIT TRAN
 		END TRY
 		BEGIN CATCH
 			ROLLBACK
 			Set @Return = -1
 		END CATCH
+	END
 
 	RETURN @Return
 END
 GO
 
+CREATE PROCEDURE	GetInvoiceList
+/* Procedure Description	Get a list of invoices based on a set of criteria, 
+where all of the search criteria must be satisfied
+Return Value	0 for success
+-1 for any error
+Dataset Returned	Yes 	Returns basic invoice information in a format to put in a grid
+	InvoiceID	
+	InvoiceDate	
+	Customer	A combination of @FirstName and @LastName with appropriate spaces
+	InvoiceAmount	The total amount of the invoice
+	PaymentAmount	The total of payments for the invoice
+	AmountOwing	The amount still owing for the invoice
+Parameters */	
+    @SearchInvoiceID int, -- 	Search criteria, parameter default should be NULL or empty string
+	@SearchCustomerID int --	Search criteria, parameter default should be NULL or empty string
+                     
+AS
+BEGIN
+	SET NOCOUNT ON;
 
-CREATE PROCEDURE GetInvoiceList
-/*
-Procedure Description:	Get a list of invoices based on a set of criteria, where all of the search criteria must be satisfied
-Return Value			0 for success
-						-1 for any error
-Dataset Returned		Yes 	@Returns basic invoice information in a format to put in a grid	 
-	InvoiceID,
-	InvoiceDate,
-	Customer		--A combination of FirstName and LastName with appropriate spaces
-	InvoiceAmount	--The total amount of the invoice
-	PaymentAmoun	--The total of payments for the invoice
-	AmountOwing		--The amount still owing for the invoice
-*/
-	@SearchInvoiceID int,  -- 	@Search criteria, parameter default should be NULL or empty string
-	@SearchCustomerID int  --	@Search criteria, parameter default should be NULL or empty string
---HINT: see hint for GetCustomerList.
+	declare @Return int = 0
+	IF @Return = 0
+		BEGIN
+		BEGIN TRY
+			BEGIN TRAN
+                SELECT Invoice.InvoiceID, InvoiceDate, PaymentAmount, PaymentAmount as InvoiceAmount, PaymentAmount as PaymentAmount from Invoice
+				Inner join Payment
+					on Payment.InvoiceID = Invoice.InvoiceID
+                Inner join Customer
+                    on Customer.CustomerID = Invoice.CustomerID
+                    SELECT CONCAT(FirstName, ' ', LastName) AS Customer
+					FROM Customer
+                WHERE (@SearchInvoiceID is NULL or @SearchInvoiceID like '%') and 
+                (@SearchCustomerID is NULL or CustomerID like '%')
+                SET @Return = 0
+			COMMIT TRAN
+		END TRY
+		BEGIN CATCH
+			ROLLBACK
+			Set @Return = -1
+		END CATCH
+	END
+
+	RETURN @Return
+END
+GO
+CREATE PROCEDURE	GetInvoiceDetailList
+/* Procedure Description	Get a list of invoice detail information for a particular invoice
+Return Value	0 for success
+-1 for any error
+Dataset Returned	Yes	
+	InvoiceDetailID 	The invoice detail line item ID
+	InvoiceID	The invoice the detail belongs to
+	ProductName	The product being purchased
+	Quantity 	The number of products being purchased
+Parameters */	
+    @SearchInvoiceID int --	Criteria to indicate the InvoiceID to return all invoice detail for
 
 AS
 BEGIN
 	SET NOCOUNT ON;
 
 	declare @Return int = 0
-	BEGIN TRY
+	IF @Return = 0
+		BEGIN
+		BEGIN TRY
 			BEGIN TRAN
-				
+                SELECT InvoiceDetailID,  InvoiceID, ProductName, Quantity FROM InvoiceDetail
+				inner join Product
+					on Product.ProductID = InvoiceDetail.ProductID
+                WHERE (@SearchInvoiceID is NULL or InvoiceID like '%')
+                SET @Return = 0
 			COMMIT TRAN
 		END TRY
 		BEGIN CATCH
 			ROLLBACK
 			Set @Return = -1
 		END CATCH
+	END
 
 	RETURN @Return
 END
 GO
 
+CREATE PROCEDURE	GetUnpaidInvoiceList
+/* Procedure Description	Get a list of invoices based on a set of criteria, 
+where all of the search criteria must be satisfied AND the amount owing is greater than $0
+Return Value	0 for success
+-1 for any error
+Dataset Returned	Yes 	Returns basic invoice information in a format to put in a grid
+	InvoiceID	
+	InvoiceDate	
+	Customer	A combination of @FirstName and @LastName with appropriate spaces
+	InvoiceAmount	The total amount of the invoice
+	PaymentAmount	The total of payments for the invoice
+	AmountOwing	The amount still owing for the invoice
+Parameters */	
+    @SearchCustomerID int --	Search criteria, parameter default should be NULL or empty string
+                
+AS
+BEGIN
+	SET NOCOUNT ON;
 
-CREATE PROCEDURE GetInvoiceDetailList
-/*
-Procedure Description	:Get a list of invoice detail information for a particular invoice
-Return Valu				0 for success
-						-1 for any error
-Dataset Returned		Yes
-	InvoiceDetailID		The invoice detail line item ID
-	InvoiceID			The invoice the detail belongs to
-	ProductName			The product being purchased
-	Quantity			The number of products being purchased
- */	
-	@SearchInvoiceID int  --Criteria to indicate the InvoiceID to return all invoice detail for
+	declare @Return int = 0
+	IF @Return = 0
+		BEGIN
+		BEGIN TRY
+			BEGIN TRAN
+				SELECT InvoiceAmount as (Product.Price * InvoiceDetail.Quantity 
+				
+                SELECT Invoice.InvoiceID, InvoiceDate, PaymentAmount as InvoiceAmount from Invoice
+				Inner join Payment
+					on Payment.InvoiceID = Invoice.InvoiceID
+				SELECT PaymentAmount from Payment
+                Set InvoiceAmount (
+                Inner join Customer
+                    on Customer.CustomerID = Invoice.CustomerID
+                    SELECT CustomerID, CONCAT(FirstName, ' ', LastName) AS Customer                
+                    WHERE (@SearchInvoiceID is NULL or InvoiceID like '%') and 
+					(@SearchCustomerID is NULL or CustomerID like '%')
+                SET @Return = 0
+			COMMIT TRAN
+		END TRY
+		BEGIN CATCH
+			ROLLBACK
+			Set @Return = -1
+		END CATCH
+	END
+
+	RETURN @Return
+END
+GO
+CREATE PROCEDURE	ReturnInvoice
+/* Procedure Description	Creates a new invoice based on an existing committed invoice.  
+The invoice date should be the current date, and all other information from the Invoice and 
+InvoiceDetail should be the same except:
+•	that all the quantities should be negative, indicating that the product(s), -- have been returned
+•	the newly created invoice should not be committed, so that it is still available to edit
+Return Value	0 for success
+-1 for any error
+Dataset Returned	No	
+Parameters */	
+    @ReturnInvoiceID int, --	The InvoiceID of the invoice to return
+	@NewInvoiceID int OUTPUT --	The InvoiceID of the newly created invoice
 
 AS
 BEGIN
 	SET NOCOUNT ON;
 
 	declare @Return int = 0
-	BEGIN TRY
-			BEGIN TRAN
-				
-			COMMIT TRAN
+	IF @Return = 0
+		BEGIN
+		BEGIN TRY
+			BEGIN
+				declare @count int = 0
+				select @count = count(InvoiceID) from Invoice where InvoiceID = @ReturnInvoiceID
+                IF @count = 0
+                    BEGIN
+						SELECT CustomerID, ProductID, InvoiceDetailID from Invoice
+						inner join InvoiceDetail
+						on InvoiceDetail.InvoiceID = Invoice.InvoiceID
+						SELECT InvoiceID = @ReturnInvoiceID
+						SET InvoiceDetail.Quantity = InvoiceDetail.Quantity - 1, InvoiceDate												
+						SELECT @NewInvoiceID = = SCOPE_IDENTITY()
+						SET @Return = 0
+					END
+			END 
 		END TRY
 		BEGIN CATCH
 			ROLLBACK
 			Set @Return = -1
 		END CATCH
+	END
 
 	RETURN @Return
 END
 GO
-
-
-CREATE PROCEDURE GetUnpaidInvoiceList
-/*
-Procedure Description:	Get a list of invoices based on a set of criteria, where all of the search criteria must be satisfied AND the amount owing is greater than $0
-Return Value			0 for success
-						-1 for any error
-Dataset Returned		Yes		Returns basic invoice information in a format to put in a grid
- 	InvoiceID
-	InvoiceDate
-	Customer		--combination of FirstName and LastName with appropriate spaces
-	InvoiceAmount	--The total amount of the invoice
-	PaymentAmount	--The total of payments for the invoice
-	AmountOwing		--The amount still owing for the invoice
-*/
-	@SearchCustomerID int  --Search criteria, parameter default should be NULL or empty string
---HINT: see hint for GetCustomerList.
-
-AS
-BEGIN
-	SET NOCOUNT ON;
-
-	declare @Return int = 0
-	BEGIN TRY
-			BEGIN TRAN
-				
-			COMMIT TRAN
-		END TRY
-		BEGIN CATCH
-			ROLLBACK
-			Set @Return = -1
-		END CATCH
-
-	RETURN @Return
-END
-GO
-
-
-CREATE PROCEDURE ReturnInvoice
-/*
-Procedure Description:	Creates a new invoice based on an existing committed invoice. 
-						The invoice date should be the current date, and all other information
-						 from the Invoice and InvoiceDetail should be the same except:
-						•	that all the quantities should be negative, indicating that the product(s), -- have been returned
-						•	the newly created invoice should not be committed, so that it is still available to edit
-Return Value			0 for success
-						-1 for any error
-Dataset Returned		No
- */	
-	@ReturnInvoiceID int,  --The InvoiceID of the invoice to return
-	@NewInvoiceID int  OUTPUT --The InvoiceID of the newly created invoice
-
-AS
-BEGIN
-	SET NOCOUNT ON;
-
-	declare @Return int = 0
-	BEGIN TRY
-			BEGIN TRAN
-				
-			COMMIT TRAN
-		END TRY
-		BEGIN CATCH
-			ROLLBACK
-			Set @Return = -1
-		END CATCH
-
-	RETURN @Return
-END
-GO
-
 
 ---
 ---Purchase Order Requirements
