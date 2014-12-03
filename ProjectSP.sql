@@ -1174,7 +1174,7 @@ Dataset Returned	Yes 	Returns basic invoice information in a format to put in a 
 	PaymentAmount	The total of payments for the invoice
 	AmountOwing	The amount still owing for the invoice
 Parameters */	
-    @SearchCustomerID int --	Search criteria, parameter default should be NULL or empty string
+    @SearchCustomerID int = null --	Search criteria, parameter default should be NULL or empty string
                 
 AS
 BEGIN
@@ -1182,19 +1182,21 @@ BEGIN
 	declare @Return int = 0
 	BEGIN TRY
 		BEGIN TRAN
-			SELECT	Invoice.InvoiceID,Invoice.InvoiceDate,
+		
+			SELECT	Invoice.InvoiceID,
+					Invoice.InvoiceDate,
 					CONCAT(FirstName, ' ', LastName) AS Customer,
 					SUM(Product.Price * InvoiceDetail.Quantity) As InvoiceAmount,
 					PaymentAmount,
-					(SUM(Product.Price * InvoiceDetail.Quantity)-PaymentAmount) AS AmountOwing
+					SUM(Product.Price * InvoiceDetail.Quantity)-PaymentAmount AS AmountOwing 				
 			FROM Invoice
-				INNER JOIN Customer ON Customer.CustomerID = Invoice.CustomerID
-				INNER JOIN InvoiceDetail on Invoice.InvoiceID = InvoiceDetail.InvoiceDetailID
-				INNER JOIN Product on InvoiceDetail.ProductID = Product.ProductID
-				INNER JOIN Payment on Invoice.InvoiceID = Payment.InvoiceID
-			WHERE Customer.CustomerID = 5 
-			GROUP BY Invoice.InvoiceID
-			HAVING (SUM(Product.Price * InvoiceDetail.Quantity)-PaymentAmount) > 0
+				LEFT JOIN Customer ON Customer.CustomerID = Invoice.CustomerID
+				LEFT JOIN InvoiceDetail on Invoice.InvoiceID = InvoiceDetail.InvoiceID
+				LEFT JOIN Product on InvoiceDetail.ProductID = Product.ProductID
+				LEFT JOIN Payment on Invoice.InvoiceID = Payment.InvoiceID
+			WHERE Customer.CustomerID = @SearchCustomerID or @SearchCustomerID is null
+			GROUP BY Invoice.InvoiceID,InvoiceDate,CONCAT(FirstName, ' ', LastName),PaymentAmount
+			HAVING SUM(Product.Price * InvoiceDetail.Quantity)-PaymentAmount>0
             SET @Return = 0
 		COMMIT TRAN
 	END TRY
