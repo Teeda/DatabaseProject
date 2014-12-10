@@ -255,3 +255,139 @@ declare @Return int
 EXEC @Return = GetPaymentList
 SELECT @Return as ReturnValue
 GO
+
+/*Test AddInvoice */
+DECLARE @InvoiceID int
+DECLARE @Return int
+EXEC @Return = AddInvoice
+	"2011-11-11",
+	1,
+	@InvoiceID  OUTPUT
+SELECT @Return as ReturnValue, @InvoiceID as InvoiceID
+SELECT * from Invoice
+
+EXEC @Return = AddInvoice
+	"2011-11-11",
+	null,
+	@InvoiceID  OUTPUT
+SELECT @Return as ReturnValue, @InvoiceID as InvoiceID
+SELECT * from Invoice
+GO
+
+/*Test AddInvoiceDetail */
+DECLARE @InvoiceDetailID int
+DECLARE @Return int
+EXEC @Return = AddInvoiceDetail
+	1,
+	1,
+	1,
+	@InvoiceDetailID OUTPUT
+SELECT @Return as ReturnValue, @InvoiceDetailID as InvoiceDetailID
+SELECT * from InvoiceDetail
+
+EXEC @Return = AddInvoiceDetail
+	0,
+	null,
+	1,
+	@InvoiceDetailID OUTPUT
+SELECT @Return as ReturnValue, @InvoiceDetailID as InvoiceDetailID
+SELECT * from InvoiceDetail
+GO
+
+/*Update Invoice */
+DECLARE @Return int
+EXEC @Return = UpdateInvoice
+	5,
+	"2011-01-01",
+	5
+SELECT @Return as ReturnValue
+SELECT * from Invoice
+
+EXEC @Return = UpdateInvoice
+	50000,
+	"2016-01-01",
+	1
+SELECT @Return as ReturnValue
+SELECT * from Invoice
+GO
+
+/*Update InvoiceDetail */
+DECLARE @Return int
+EXEC @Return = UpdateInvoiceDetail
+	2,
+	1,
+	1
+SELECT @Return as ReturnValue
+SELECT * from InvoiceDetail
+
+EXEC @Return = UpdateInvoiceDetail
+	null,
+	null,
+	9
+SELECT @Return as ReturnValue
+SELECT * from InvoiceDetail
+GO
+
+/*Get Invoice By ID */
+DECLARE @Return int
+DECLARE @InvoiceDate Datetime, @CustomerID int
+EXEC @Return = GetInvoiceByID
+	1,
+	@InvoiceDate OUTPUT,
+	@CustomerID OUTPUT
+SELECT @Return as ReturnValue
+SELECT * from Invoice
+
+EXEC @Return = GetInvoiceByID
+	0,
+	@InvoiceDate OUTPUT,
+	@CustomerID OUTPUT
+SELECT @Return as ReturnValue
+SELECT * from Invoice
+GO
+
+/*Get InvoiceDetail by ID */
+DECLARE @Return int
+DECLARE @ProductID int, @Quantity int
+EXEC @Return = GetInvoiceDetailByID
+	1,
+	@ProductID OUTPUT,
+	@Quantity OUTPUT
+SELECT @Return as ReturnValue
+SELECT * from InvoiceDetail
+
+EXEC @Return = GetInvoiceDetailByID
+	0,
+	@ProductID OUTPUT,
+	@Quantity OUTPUT
+SELECT @Return as ReturnValue
+SELECT * from InvoiceDetail
+GO
+
+--AddPurchaseOrder
+declare @PurchaseOrderID int
+declare @Return int
+EXEC @Return = AddPurchaseOrder
+	"2014-01-01",
+	0, 			
+	@PurchaseOrderID OUTPUT
+SELECT @Return as ReturnValue,@PurchaseOrderID as PurchaseOrderID
+GO
+
+SELECT * from PurchaseOrder
+
+--UpdatePurchaseOrder
+declare @Return int
+EXEC @Return = UpdatePurchaseOrder 
+	000000000, 		--PurchaseOrderID int	The ID of the PurchaseOrder to edit
+	"2014-1-1", 	--PurchaseOrderDate datetime
+	12345679		--PurchaseOrderID int
+SELECT @Return as ReturnValue,* from PurchaseOrder
+GO
+
+--DeletePurchaseOrder
+declare @Return int
+EXEC @Return = DeletePurchaseOrder 
+	000000000 		--PurchaseOrderID int The ID of the PurchaseOrder to dedete
+SELECT @RETURN as ReturnValue
+GO
